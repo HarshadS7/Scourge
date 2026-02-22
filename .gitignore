@@ -12,6 +12,7 @@ contracts/cache/
 contracts/broadcast/
 
 **/lib/
+!frontend/src/lib/
 **/out/
 **/cache/
 **/broadcast/
