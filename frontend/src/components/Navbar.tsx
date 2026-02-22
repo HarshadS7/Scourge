@@ -6,16 +6,26 @@ import { useState } from 'react';
 import { clsx } from 'clsx';
 import GeoBadge from './GeoBadge';
 
-const NAV_LINKS = [
+const CUSTOMER_LINKS = [
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/submit',      label: 'Submit Data'  },
   { href: '/dashboard',   label: 'Dashboard'    },
   { href: '/identity',    label: 'Identity'     },
 ];
 
+const COMPANY_LINKS = [
+  { href: '/company',     label: 'Dashboard'    },
+  { href: '/marketplace', label: 'Marketplace'  },
+];
+
 export default function Navbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const isCompany = pathname.startsWith('/company');
+  const NAV_LINKS = isCompany ? COMPANY_LINKS : CUSTOMER_LINKS;
+  const toggleHref = isCompany ? '/dashboard' : '/company';
+  const toggleLabel = isCompany ? 'Login as Customer' : 'Login as Company';
 
   return (
     <header className="sticky top-0 z-50 bg-bauhaus-white border-b-3 border-bauhaus-black">
@@ -48,6 +58,17 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <Link
+            href={toggleHref}
+            className={clsx(
+              'px-4 py-2 text-sm font-semibold uppercase tracking-widest transition-colors border-3',
+              isCompany
+                ? 'border-bauhaus-red bg-bauhaus-red text-bauhaus-white hover:bg-bauhaus-red/90'
+                : 'border-bauhaus-blue bg-bauhaus-blue text-bauhaus-white hover:bg-bauhaus-blue/90'
+            )}
+          >
+            {toggleLabel}
+          </Link>
         </nav>
 
         {/* Wallet connect */}
@@ -88,6 +109,18 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <Link
+            href={toggleHref}
+            onClick={() => setOpen(false)}
+            className={clsx(
+              'block px-6 py-4 text-sm font-semibold uppercase tracking-widest border-b-3 border-bauhaus-black',
+              isCompany
+                ? 'bg-bauhaus-red text-bauhaus-white'
+                : 'bg-bauhaus-blue text-bauhaus-white'
+            )}
+          >
+            {toggleLabel}
+          </Link>
           <div className="p-4">
             <button className="btn-primary w-full justify-center">Connect Wallet</button>
           </div>
