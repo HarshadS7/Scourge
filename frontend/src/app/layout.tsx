@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import Web3Provider from '@/lib/Web3Provider';
+import { DebugPanel } from '@/components/DebugPanel';
+import { NetworkStatus } from '@/components/NetworkStatus';
 
 export const metadata: Metadata = {
   title: 'SCOURGE — Private Data Marketplace',
@@ -19,8 +22,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen bg-bauhaus-white font-sans">
-        <Navbar />
-        <main>{children}</main>
+        <Web3Provider>
+          <Navbar />
+          <main>{children}</main>
+          <DebugPanel />
+          <NetworkStatus />
+        </Web3Provider>
       </body>
     </html>
   );

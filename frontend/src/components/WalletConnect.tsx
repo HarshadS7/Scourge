@@ -49,7 +49,7 @@ export function WalletConnect() {
 }
 
 /**
- * Custom Connect Button (if you prefer custom styling)
+ * Custom Connect Button with Bauhaus styling
  */
 export function CustomConnectButton() {
   const { address, isConnected } = useAccount();
@@ -84,7 +84,7 @@ export function CustomConnectButton() {
                   <button
                     onClick={openConnectModal}
                     type="button"
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="btn-primary text-xs py-2 px-4"
                   >
                     Connect Wallet
                   </button>
@@ -96,7 +96,7 @@ export function CustomConnectButton() {
                   <button
                     onClick={openChainModal}
                     type="button"
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="bauhaus-border bg-bauhaus-red text-bauhaus-white px-4 py-2 text-xs font-semibold uppercase tracking-widest hover:bg-bauhaus-red/90 transition-colors"
                   >
                     Wrong Network
                   </button>
@@ -104,38 +104,11 @@ export function CustomConnectButton() {
               }
 
               return (
-                <div className="flex gap-3">
-                  <button
-                    onClick={openChainModal}
-                    type="button"
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                  >
-                    {chain.hasIcon && (
-                      <div
-                        style={{
-                          background: chain.iconBackground,
-                          width: 20,
-                          height: 20,
-                          borderRadius: 999,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {chain.iconUrl && (
-                          <img
-                            alt={chain.name ?? 'Chain icon'}
-                            src={chain.iconUrl}
-                            style={{ width: 20, height: 20 }}
-                          />
-                        )}
-                      </div>
-                    )}
-                    {chain.name}
-                  </button>
-
+                <div className="flex gap-2">
                   <button
                     onClick={openAccountModal}
                     type="button"
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    className="bauhaus-border bg-bauhaus-black text-bauhaus-white px-4 py-2 text-xs font-mono hover:bg-bauhaus-black/90 transition-colors"
                   >
                     {account.displayName}
                   </button>

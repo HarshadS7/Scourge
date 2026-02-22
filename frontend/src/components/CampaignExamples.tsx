@@ -220,6 +220,9 @@ export function CampaignDetailsExample({ campaignId }: { campaignId: bigint }) {
     return <div className="text-red-400">Campaign not found</div>;
   }
 
+  // Type assertion to access campaign fields
+  const campaignData = campaign as any;
+
   return (
     <div className="bg-gray-800 rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
@@ -237,30 +240,34 @@ export function CampaignDetailsExample({ campaignId }: { campaignId: bigint }) {
         <div className="flex justify-between">
           <span className="text-gray-400">Company:</span>
           <code className="text-xs bg-gray-900 px-2 py-1 rounded">
-            {campaign[0].slice(0, 6)}...{campaign[0].slice(-4)}
+            {campaignData.company?.slice(0, 6)}...{campaignData.company?.slice(-4)}
           </code>
         </div>
 
         <div className="flex justify-between">
           <span className="text-gray-400">Filecoin CID:</span>
           <code className="text-xs bg-gray-900 px-2 py-1 rounded">
-            {campaign[1].slice(0, 10)}...
+            {campaignData.metadataFilecoinCID?.slice(0, 10)}...
           </code>
         </div>
 
         <div className="flex justify-between">
           <span className="text-gray-400">Price per Submission:</span>
-          <span className="font-mono">{formatEther(campaign[3])} MONAD</span>
+          <span className="font-mono">
+            {campaignData.pricePerSubmission ? formatEther(campaignData.pricePerSubmission) : '0'} MONAD
+          </span>
         </div>
 
         <div className="flex justify-between">
           <span className="text-gray-400">Total Budget:</span>
-          <span className="font-mono">{formatEther(campaign[4])} MONAD</span>
+          <span className="font-mono">
+            {campaignData.totalBudget ? formatEther(campaignData.totalBudget) : '0'} MONAD
+          </span>
         </div>
 
         <div className="flex justify-between">
           <span className="text-gray-400">Submissions:</span>
-          <span>{campaign[7].toString()}</span>
+          <span>{campaignData.submissionCount?.toString() || '0'}</span>
         </div>
       </div>
 

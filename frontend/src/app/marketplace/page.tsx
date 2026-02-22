@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, SlidersHorizontal, ArrowRight, ChevronDown } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, SlidersHorizontal, ArrowRight, ChevronDown, Loader2 } from 'lucide-react';
 import CampaignCard from '@/components/CampaignCard';
 import GeoBadge from '@/components/GeoBadge';
 import { clsx } from 'clsx';
 import Link from 'next/link';
+import { useCampaigns } from '@/hooks';
+import { useAccount } from 'wagmi';
 
 const CAMPAIGNS = [
   {
@@ -80,10 +82,13 @@ const ATTR_FILTERS = ['Age Range', 'Region', 'Income', 'Spend', 'Device', 'Healt
 const STATUS_FILTERS = ['all', 'active', 'closing', 'filled'];
 
 export default function MarketplacePage() {
-  const [search, setSearch]       = useState('');
+  const { isConnected } = useAccount();
+  const { campaigns, isLoading, totalCount } = useCampaigns();
+  
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [attrFilters, setAttrFilters]   = useState<string[]>([]);
-  const [sortBy, setSortBy]       = useState('price-desc');
+  const [attrFilters, setAttrFilters] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState('price-desc');
   const [showFilters, setShowFilters] = useState(false);
 
   const toggleAttr = (attr: string) => {
@@ -92,7 +97,22 @@ export default function MarketplacePage() {
     );
   };
 
-  const filtered = CAMPAIGNS
+  // Transform campaigns to match CampaignCard expected format
+  const transformedCampaigns = useMemo(() => {
+    return campaigns.map(c => ({
+      id: c.id.toString(),
+      company: c.companyName || `Company ${c.id}`,
+      title: c.title || `Campaign ${c.id}`,
+      attributes: c.attributes || ['Age Range', 'Region'],
+      pricePerSubmit: c.priceFormatted || '0.001 ETH',
+      budget: c.budgetFormatted || '0.1 ETH',
+      budgetUsed: c.budgetUsed || 0,
+      deadline: c.deadlineDate || new Date().toISOString().split('T')[0],
+      status: c.status,
+    }));
+  }, [campaigns]);
+
+  const filtered = transformedCampaigns
     .filter(c => {
       if (statusFilter !== 'all' && c.status !== statusFilter) return false;
       if (search && !c.title.toLowerCase().includes(search.toLowerCase()) && !c.company.toLowerCase().includes(search.toLowerCase())) return false;
@@ -107,6 +127,11 @@ export default function MarketplacePage() {
       if (sortBy === 'budget')     return b.budgetUsed - a.budgetUsed;
       return 0;
     });
+
+  // Calculate stats
+  const activeCount = transformedCampaigns.filter(c => c.status === 'active').length;
+  const closingCount = transformedCampaigns.filter(c => c.status === 'closing').length;
+  const filledCount = transformedCampaigns.filter(c => c.status === 'filled').length;
 
   return (
     <div className="min-h-screen bg-bauhaus-white">
@@ -123,9 +148,9 @@ export default function MarketplacePage() {
             </div>
             <div className="flex items-end gap-8">
               {[
-                { v: CAMPAIGNS.filter(c => c.status === 'active').length,  l: 'Active',  color: 'bg-bauhaus-blue'   },
-                { v: CAMPAIGNS.filter(c => c.status === 'closing').length, l: 'Closing', color: 'bg-bauhaus-yellow' },
-                { v: CAMPAIGNS.filter(c => c.status === 'filled').length,  l: 'Filled',  color: 'bg-bauhaus-black'  },
+                { v: activeCount,  l: 'Active',  color: 'bg-bauhaus-blue'   },
+                { v: closingCount, l: 'Closing', color: 'bg-bauhaus-yellow' },
+                { v: filledCount,  l: 'Filled',  color: 'bg-bauhaus-black'  },
               ].map((s) => (
                 <div key={s.l} className="text-right">
                   <div className="flex items-center gap-2 justify-end mb-1">
@@ -222,13 +247,59 @@ export default function MarketplacePage() {
 
       {/* Grid */}
       <div className="max-w-7xl mx-auto px-6 py-10">
-        {filtered.length === 0 ? (
+        {/* Not connected state */}
+        {!isConnected && (
+          <div className="bauhaus-card p-16 text-center">
+            <GeoBadge shape="circle" color="blue" size="xl" className="mx-auto mb-6" />
+            <p className="font-bold text-lg uppercase tracking-wide">Connect Your Wallet</p>
+            <p className="text-sm font-mono text-bauhaus-black/50 mt-2">
+              Connect your wallet to view live campaigns from the blockchain.
+            </p>
+          </div>
+        )}
+
+        {/* Loading state */}
+        {isConnected && isLoading && (
+          <div className="bauhaus-card p-16 text-center">
+            <Loader2 className="w-12 h-12 animate-spin mx-auto mb-6 text-bauhaus-blue" />
+            <p className="font-bold text-lg uppercase tracking-wide">Loading Campaigns</p>
+            <p className="text-sm font-mono text-bauhaus-black/50 mt-2">
+              Fetching data from Monad testnet...
+            </p>
+          </div>
+        )}
+
+        {/* No campaigns state */}
+        {isConnected && !isLoading && transformedCampaigns.length === 0 && (
+          <div className="bauhaus-card p-16 text-center">
+            <GeoBadge shape="triangle" color="yellow" size="xl" className="mx-auto mb-6" />
+            <p className="font-bold text-lg uppercase tracking-wide">No Campaigns Yet</p>
+            <p className="text-sm font-mono text-bauhaus-black/50 mt-2">
+              No campaigns have been created on the contract yet. Be the first to create one!
+            </p>
+            <Link href="/create-campaign" className="btn-primary mt-6 inline-flex">
+              Create Campaign <ArrowRight size={16} />
+            </Link>
+          </div>
+        )}
+
+        {/* Filtered but no results */}
+        {isConnected && !isLoading && transformedCampaigns.length > 0 && filtered.length === 0 && (
           <div className="bauhaus-card p-16 text-center">
             <GeoBadge shape="triangle" color="yellow" size="xl" className="mx-auto mb-6" />
             <p className="font-bold text-lg uppercase tracking-wide">No campaigns match</p>
             <p className="text-sm font-mono text-bauhaus-black/50 mt-2">Adjust filters or clear search.</p>
+            <button 
+              onClick={() => { setSearch(''); setStatusFilter('all'); setAttrFilters([]); }}
+              className="btn-outline mt-6"
+            >
+              Clear All Filters
+            </button>
           </div>
-        ) : (
+        )}
+
+        {/* Campaign Grid */}
+        {isConnected && !isLoading && filtered.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-0">
             {filtered.map((c, i) => (
               <div

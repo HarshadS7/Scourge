@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import GeoBadge from './GeoBadge';
+import { CustomConnectButton } from './WalletConnect';
 
 const CUSTOMER_LINKS = [
   { href: '/marketplace', label: 'Marketplace' },
@@ -74,9 +75,7 @@ export default function Navbar() {
         {/* Wallet connect */}
         <div className="hidden md:flex items-center gap-3">
           <GeoBadge color="yellow" shape="circle" size="sm" />
-          <button className="btn-primary text-xs py-2 px-4">
-            Connect Wallet
-          </button>
+          <CustomConnectButton />
         </div>
 
         {/* Mobile hamburger */}
@@ -122,7 +121,7 @@ export default function Navbar() {
             {toggleLabel}
           </Link>
           <div className="p-4">
-            <button className="btn-primary w-full justify-center">Connect Wallet</button>
+            <CustomConnectButton />
           </div>
         </div>
       )}
