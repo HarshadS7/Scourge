@@ -8,19 +8,20 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /**
  * @title CampaignManager
  * @notice Manages data collection campaigns posted by companies
- * @dev Handles campaign creation, metadata storage, and constraint definitions
+ * @dev Handles campaign creation, metadata storage on Filecoin, and constraint definitions
  */
 contract CampaignManager is Ownable {
     struct Campaign {
         address company;
-        string attributesIPFSHash; // IPFS hash containing required attributes and constraints
+        string metadataFilecoinCID; // Filecoin CID containing campaign details, requirements, form fields
+        bytes32 metadataHash; // Hash of metadata for integrity verification
         uint256 pricePerSubmission;
         uint256 totalBudget;
         uint256 deadline;
         uint256 collectionDuration; // Duration in days for data collection (e.g., 30 days)
         uint256 submissionCount;
         bool active;
-        bytes32 constraintsHash; // Hash of the constraint definitions
+        bytes32 constraintsHash; // Hash of the ZK proof constraint definitions
     }
     
     uint256 private _campaignIdCounter;
@@ -62,7 +63,8 @@ contract CampaignManager is Ownable {
     
     /**
      * @notice Create a new data collection campaign
-     * @param attributesIPFSHash IPFS hash containing campaign metadata and required attributes
+     * @param metadataFilecoinCID Filecoin CID containing campaign metadata (title, description, requirements, form fields)
+     * @param metadataHash Hash of the metadata for integrity verification
      * @param pricePerSubmission Price paid per valid submission
      * @param collectionDuration Duration in days for data collection
      * @param deadline Campaign deadline timestamp
@@ -70,7 +72,8 @@ contract CampaignManager is Ownable {
      * @return campaignId The ID of the created campaign
      */
     function createCampaign(
-        string calldata attributesIPFSHash,
+        string calldata metadataFilecoinCID,
+        bytes32 metadataHash,
         uint256 pricePerSubmission,
         uint256 collectionDuration,
         uint256 deadline,
@@ -84,7 +87,8 @@ contract CampaignManager is Ownable {
         
         campaigns[campaignId] = Campaign({
             company: msg.sender,
-            attributesIPFSHash: attributesIPFSHash,
+            metadataFilecoinCID: metadataFilecoinCID,
+            metadataHash: metadataHash,
             pricePerSubmission: pricePerSubmission,
             totalBudget: msg.value,
             deadline: deadline,

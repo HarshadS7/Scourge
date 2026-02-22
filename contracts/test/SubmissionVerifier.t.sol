@@ -29,7 +29,8 @@ contract SubmissionVerifierTest is Test {
         uint256 indexed submissionId,
         uint256 indexed campaignId,
         address indexed submitter,
-        string encryptedDataIPFSHash,
+        string submissionFilecoinCID,
+        bytes32 submissionHash,
         uint256 payout
     );
     
@@ -68,20 +69,22 @@ contract SubmissionVerifierTest is Test {
     function testSubmitData() public {
         uint256 campaignId = createTestCampaign();
         bytes32 campaignNullifier = keccak256(abi.encodePacked("user1-secret", campaignId));
-        string memory ipfsHash = "QmEncryptedData123";
+        string memory filecoinCID = "QmEncryptedData123";
+        bytes32 submissionHash = keccak256("submission-data");
         
         uint256 userBalanceBefore = user1.balance;
         
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit SubmissionVerified(1, campaignId, user1, ipfsHash, 1 ether);
+        emit SubmissionVerified(1, campaignId, user1, filecoinCID, submissionHash, 1 ether);
         
         uint256 submissionId = submissionVerifier.submitData(
             campaignId,
             validProof,
             validProof,
             campaignNullifier,
-            ipfsHash,
+            filecoinCID,
+            submissionHash,
             validPublicSignals,
             validPublicSignals
         );
@@ -110,6 +113,7 @@ contract SubmissionVerifierTest is Test {
             validProof,
             campaignNullifier,
             "QmTest",
+            keccak256("test"),
             validPublicSignals,
             validPublicSignals
         );
@@ -127,6 +131,7 @@ contract SubmissionVerifierTest is Test {
             validProof,
             campaignNullifier,
             "QmTest",
+            keccak256("test"),
             validPublicSignals,
             validPublicSignals
         );
@@ -144,6 +149,7 @@ contract SubmissionVerifierTest is Test {
             validProof,
             campaignNullifier,
             "QmTest1",
+            keccak256("test1"),
             validPublicSignals,
             validPublicSignals
         );
@@ -157,6 +163,7 @@ contract SubmissionVerifierTest is Test {
             validProof,
             campaignNullifier,
             "QmTest2",
+            keccak256("test2"),
             validPublicSignals,
             validPublicSignals
         );
@@ -176,6 +183,7 @@ contract SubmissionVerifierTest is Test {
             validProof,
             nullifier1,
             "QmUser1Data",
+            keccak256("user1-data"),
             validPublicSignals,
             validPublicSignals
         );
@@ -188,6 +196,7 @@ contract SubmissionVerifierTest is Test {
             validProof,
             nullifier2,
             "QmUser2Data",
+            keccak256("user2-data"),
             validPublicSignals,
             validPublicSignals
         );
@@ -215,6 +224,7 @@ contract SubmissionVerifierTest is Test {
             validProof,
             campaignNullifier,
             "QmTest",
+            keccak256("test"),
             validPublicSignals,
             validPublicSignals
         );
@@ -223,7 +233,8 @@ contract SubmissionVerifierTest is Test {
     function testGetSubmission() public {
         uint256 campaignId = createTestCampaign();
         bytes32 campaignNullifier = keccak256("test");
-        string memory ipfsHash = "QmTest123";
+        string memory filecoinCID = "QmTest123";
+        bytes32 submissionHash = keccak256("test-data");
         
         vm.prank(user1);
         uint256 submissionId = submissionVerifier.submitData(
@@ -231,7 +242,8 @@ contract SubmissionVerifierTest is Test {
             validProof,
             validProof,
             campaignNullifier,
-            ipfsHash,
+            filecoinCID,
+            submissionHash,
             validPublicSignals,
             validPublicSignals
         );
@@ -240,7 +252,8 @@ contract SubmissionVerifierTest is Test {
         
         assertEq(submission.submitter, user1);
         assertEq(submission.campaignId, campaignId);
-        assertEq(submission.encryptedDataIPFSHash, ipfsHash);
+        assertEq(submission.submissionFilecoinCID, filecoinCID);
+        assertEq(submission.submissionHash, submissionHash);
         assertEq(submission.campaignNullifier, campaignNullifier);
         assertTrue(submission.verified);
     }
@@ -255,6 +268,7 @@ contract SubmissionVerifierTest is Test {
         vm.prank(company);
         return campaignManager.createCampaign{value: 10 ether}(
             "QmCampaignAttributes",
+            keccak256("campaign-metadata"),
             1 ether,
             30,
             block.timestamp + 30 days,

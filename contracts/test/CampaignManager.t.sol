@@ -54,7 +54,8 @@ contract CampaignManagerTest is Test {
         uint256 pricePerSubmission = 1 ether;
         uint256 budget = 10 ether;
         uint256 deadline = block.timestamp + 30 days;
-        string memory ipfsHash = "QmTest123";
+        string memory filecoinCID = "QmTest123";
+        bytes32 metadataHash = keccak256("campaign-metadata");
         bytes32 constraintsHash = keccak256("constraints");
         
         vm.prank(company);
@@ -62,7 +63,8 @@ contract CampaignManagerTest is Test {
         emit CampaignCreated(1, company, pricePerSubmission, budget, deadline);
         
         uint256 campaignId = campaignManager.createCampaign{value: budget}(
-            ipfsHash,
+            filecoinCID,
+            metadataHash,
             pricePerSubmission,
             30, // 30 days collection
             deadline,
@@ -84,6 +86,7 @@ contract CampaignManagerTest is Test {
         vm.expectRevert(CampaignManager.InvalidDeadline.selector);
         campaignManager.createCampaign{value: 10 ether}(
             "QmTest",
+            keccak256("metadata"),
             1 ether,
             30,
             block.timestamp - 1, // Past deadline
@@ -96,6 +99,7 @@ contract CampaignManagerTest is Test {
         vm.expectRevert(CampaignManager.InvalidPrice.selector);
         campaignManager.createCampaign{value: 10 ether}(
             "QmTest",
+            keccak256("metadata"),
             0, // Zero price
             30,
             block.timestamp + 30 days,
@@ -108,6 +112,7 @@ contract CampaignManagerTest is Test {
         vm.expectRevert(CampaignManager.InsufficientBudget.selector);
         campaignManager.createCampaign{value: 0.5 ether}(
             "QmTest",
+            keccak256("metadata"),
             1 ether, // Price higher than budget
             30,
             block.timestamp + 30 days,
@@ -149,6 +154,7 @@ contract CampaignManagerTest is Test {
         vm.prank(company);
         return campaignManager.createCampaign{value: 10 ether}(
             "QmTest",
+            keccak256("campaign-metadata"),
             1 ether,
             30,
             block.timestamp + 30 days,

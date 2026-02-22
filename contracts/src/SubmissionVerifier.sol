@@ -11,12 +11,14 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  * @title SubmissionVerifier
  * @notice Verifies data submissions using ZK proofs and manages payouts
  * @dev Core contract that orchestrates identity verification, data proof verification, and payment
+ *      User submission data is stored on Filecoin for decentralized, verifiable storage
  */
 contract SubmissionVerifier is ReentrancyGuard {
     struct Submission {
         address submitter;
         uint256 campaignId;
-        string encryptedDataIPFSHash;
+        string submissionFilecoinCID; // Filecoin CID containing user's submission data, responses, attachments
+        bytes32 submissionHash; // Hash of submission data for integrity verification
         bytes32 campaignNullifier;
         uint256 timestamp;
         bool verified;
@@ -47,7 +49,8 @@ contract SubmissionVerifier is ReentrancyGuard {
         uint256 indexed submissionId,
         uint256 indexed campaignId,
         address indexed submitter,
-        string encryptedDataIPFSHash,
+        string submissionFilecoinCID,
+        bytes32 submissionHash,
         uint256 payout
     );
     
@@ -70,7 +73,8 @@ contract SubmissionVerifier is ReentrancyGuard {
      * @param identityProof ZK proof of identity
      * @param dataProof ZK proof that data satisfies campaign constraints
      * @param campaignNullifier Nullifier to prevent duplicate submissions to same campaign
-     * @param encryptedDataIPFSHash IPFS hash of encrypted data
+     * @param submissionFilecoinCID Filecoin CID of user's submission data (responses, attachments, etc.)
+     * @param submissionHash Hash of submission data for integrity verification
      * @param identityPublicSignals Public signals for identity proof
      * @param dataPublicSignals Public signals for data proof
      * @return submissionId The ID of the submission
@@ -80,7 +84,8 @@ contract SubmissionVerifier is ReentrancyGuard {
         uint256[8] calldata identityProof,
         uint256[8] calldata dataProof,
         bytes32 campaignNullifier,
-        string calldata encryptedDataIPFSHash,
+        string calldata submissionFilecoinCID,
+        bytes32 submissionHash,
         uint256[] calldata identityPublicSignals,
         uint256[] calldata dataPublicSignals
     ) external nonReentrant returns (uint256) {
@@ -135,7 +140,8 @@ contract SubmissionVerifier is ReentrancyGuard {
         submissions[submissionId] = Submission({
             submitter: msg.sender,
             campaignId: campaignId,
-            encryptedDataIPFSHash: encryptedDataIPFSHash,
+            submissionFilecoinCID: submissionFilecoinCID,
+            submissionHash: submissionHash,
             campaignNullifier: campaignNullifier,
             timestamp: block.timestamp,
             verified: true
@@ -151,7 +157,8 @@ contract SubmissionVerifier is ReentrancyGuard {
             submissionId,
             campaignId,
             msg.sender,
-            encryptedDataIPFSHash,
+            submissionFilecoinCID,
+            submissionHash,
             campaign.pricePerSubmission
         );
         
