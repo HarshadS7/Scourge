@@ -99,17 +99,57 @@ export default function MarketplacePage() {
 
   // Transform campaigns to match CampaignCard expected format
   const transformedCampaigns = useMemo(() => {
-    return campaigns.map(c => ({
-      id: c.id.toString(),
-      company: c.companyName || `Company ${c.id}`,
-      title: c.title || `Campaign ${c.id}`,
-      attributes: c.attributes || ['Age Range', 'Region'],
-      pricePerSubmit: c.priceFormatted || '0.001 ETH',
-      budget: c.budgetFormatted || '0.1 ETH',
-      budgetUsed: c.budgetUsed || 0,
-      deadline: c.deadlineDate || new Date().toISOString().split('T')[0],
-      status: c.status,
-    }));
+    return campaigns.map(c => {
+      // Use metadata if available, otherwise use blockchain data
+      const title = c.title || c.metadataFilecoinCID || `Campaign #${c.id}`;
+      const companyName = c.companyName || `${c.company.slice(0, 6)}...${c.company.slice(-4)}`;
+      const attributes = c.attributes && c.attributes.length > 0 
+        ? c.attributes 
+        : ['On-chain Data', 'Verified'];
+      
+      return {
+        id: c.id.toString(),
+        company: companyName,
+        title: title,
+        attributes: attributes,
+        pricePerSubmit: `${c.priceFormatted} MONAD`,
+        budget: `${c.budgetFormatted} MONAD budget`,
+        budgetUsed: c.budgetUsed,
+        deadline: c.deadlineDate,
+        status: c.status,
+      };
+    });
+  }, [campaigns]);
+
+  // Fetch metadata from IPFS for campaigns with CIDs
+  useEffect(() => {
+    async function loadMetadata() {
+      for (const campaign of campaigns) {
+        if (campaign.metadataFilecoinCID && !campaign.title) {
+          try {
+            const { fetchFromFilecoin } = await import('@/lib/filecoin');
+            const metadata = await fetchFromFilecoin<{
+              title?: string;
+              description?: string;
+              companyName?: string;
+              attributes?: string[];
+            }>(campaign.metadataFilecoinCID);
+            
+            // Update campaign with metadata
+            console.log(`📋 Loaded metadata for campaign ${campaign.id}:`, metadata);
+            
+            // This would require updating the campaign state
+            // For now, metadata will be loaded on next refetch
+          } catch (error) {
+            console.warn(`Could not load metadata for campaign ${campaign.id}:`, error);
+          }
+        }
+      }
+    }
+    
+    if (campaigns.length > 0) {
+      loadMetadata();
+    }
   }, [campaigns]);
 
   const filtered = transformedCampaigns

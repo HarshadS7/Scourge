@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -10,14 +10,18 @@ const nextConfig = {
       crypto: false,
       'pino-pretty': false,
       encoding: false,
+      '@react-native-async-storage/async-storage': false,
     };
     
-    config.externals.push('pino-pretty', 'lokijs', 'encoding');
+    if (!isServer) {
+      config.externals.push('pino-pretty', 'lokijs', 'encoding', '@react-native-async-storage/async-storage');
+    }
     
     // Ignore warnings for optional dependencies
     config.ignoreWarnings = [
-      { module: /node_modules\/@react-native-async-storage/ },
-      { module: /node_modules\/pino-pretty/ },
+      /node_modules\/@react-native-async-storage/,
+      /node_modules\/pino-pretty/,
+      /Can't resolve '@react-native-async-storage\/async-storage'/,
     ];
     
     return config;

@@ -5,7 +5,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useReadContract, useContractReads } from 'wagmi';
+import { useReadContract, useReadContracts } from 'wagmi';
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses';
 import { CAMPAIGN_MANAGER_ABI } from '@/lib/contracts/abis';
 import { formatEther } from 'viem';
@@ -46,7 +46,7 @@ export interface CampaignMetadata {
 
 export function useCampaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
 
   // Get total number of campaigns
   const { data: totalCampaigns, isLoading, isError, refetch } = useReadContract({
@@ -55,6 +55,7 @@ export function useCampaigns() {
     functionName: 'getTotalCampaigns',
   });
 
+  // Fetch all campaigns when total changes
   useEffect(() => {
     async function fetchAllCampaigns() {
       if (!totalCampaigns || isError || isLoading) {
@@ -62,33 +63,85 @@ export function useCampaigns() {
       }
 
       const total = Number(totalCampaigns);
+      console.log(`📊 Total campaigns on blockchain: ${total}`);
+      
       if (total === 0) {
         setCampaigns([]);
         return;
       }
 
-      setIsLoadingMetadata(true);
+      setIsLoadingCampaigns(true);
 
       try {
-        // Fetch all campaigns from contract
-        const campaignPromises: Promise<Campaign | null>[] = [];
+        // Create contract read calls for all campaigns
+        const campaignContracts = [];
+        const activeContracts = [];
         
         for (let i = 0; i < total; i++) {
-          campaignPromises.push(fetchCampaignById(i));
+          campaignContracts.push({
+            address: CONTRACT_ADDRESSES.CAMPAIGN_MANAGER as `0x${string}`,
+            abi: CAMPAIGN_MANAGER_ABI,
+            functionName: 'getCampaign',
+            args: [BigInt(i)],
+          });
+          
+          activeContracts.push({
+            address: CONTRACT_ADDRESSES.CAMPAIGN_MANAGER as `0x${string}`,
+            abi: CAMPAIGN_MANAGER_ABI,
+            functionName: 'isCampaignActive',
+            args: [BigInt(i)],
+          });
         }
 
-        const results = await Promise.allSettled(campaignPromises);
-        const validCampaigns = results
-          .filter((r): r is PromiseFulfilledResult<Campaign> => 
-            r.status === 'fulfilled' && r.value !== null
+        // Fetch all campaign data at once
+        const campaignResults = await Promise.all(
+          campaignContracts.map((contract, index) =>
+            fetch(process.env.NEXT_PUBLIC_MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: index + 1,
+                method: 'eth_call',
+                params: [
+                  {
+                    to: CONTRACT_ADDRESSES.CAMPAIGN_MANAGER,
+                    data: encodeCampaignCall(index),
+                  },
+                  'latest',
+                ],
+              }),
+            }).then(r => r.json())
           )
-          .map(r => r.value);
+        );
 
-        setCampaigns(validCampaigns);
+        console.log('📡 Raw campaign data from blockchain:', campaignResults);
+
+        // Parse campaigns
+        const parsedCampaigns: Campaign[] = campaignResults.map((result, index) => {
+          if (result.error) {
+            console.error(`Error fetching campaign ${index}:`, result.error);
+            return null;
+          }
+
+          const data = result.result;
+          const campaign = decodeCampaignData(data, index);
+          
+          console.log(`✅ Campaign ${index}:`, {
+            company: campaign.company,
+            price: campaign.priceFormatted,
+            budget: campaign.budgetFormatted,
+            cid: campaign.metadataFilecoinCID,
+          });
+
+          return campaign;
+        }).filter(c => c !== null) as Campaign[];
+
+        setCampaigns(parsedCampaigns);
       } catch (error) {
-        console.error('Error fetching campaigns:', error);
+        console.error('❌ Error fetching campaigns:', error);
       } finally {
-        setIsLoadingMetadata(false);
+        setIsLoadingCampaigns(false);
       }
     }
 
@@ -97,79 +150,129 @@ export function useCampaigns() {
 
   return {
     campaigns,
-    isLoading: isLoading || isLoadingMetadata,
+    isLoading: isLoading || isLoadingCampaigns,
     isError,
     refetch,
     totalCount: Number(totalCampaigns || 0),
   };
 }
 
-async function fetchCampaignById(campaignId: number): Promise<Campaign | null> {
-  try {
-    // Fetch campaign data from contract using direct RPC call
-    const rpcUrl = process.env.NEXT_PUBLIC_MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz';
-    
-    // Encode getCampaign(uint256) call
-    const functionSelector = '0x58cf6f25'; // keccak256("getCampaign(uint256)")[:8]
-    const encodedId = campaignId.toString(16).padStart(64, '0');
-    const callData = functionSelector + encodedId;
+// Encode getCampaign(uint256) function call
+function encodeCampaignCall(campaignId: number): string {
+  const functionSelector = '0x58cf6f25'; // keccak256("getCampaign(uint256)")[:8]
+  const encodedId = campaignId.toString(16).padStart(64, '0');
+  return functionSelector + encodedId;
+}
 
-    const response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'eth_call',
-        params: [
-          {
-            to: CONTRACT_ADDRESSES.CAMPAIGN_MANAGER,
-            data: callData,
-          },
-          'latest',
-        ],
-      }),
-    });
-
-    const result = await response.json();
-    
-    if (result.error) {
-      console.error(`Error fetching campaign ${campaignId}:`, result.error);
-      return null;
-    }
-
-    // Decode the response (simplified - this would need proper ABI decoding)
-    // For now, return a campaign with the ID and mark as needing metadata
-    const campaign = {
-      id: campaignId,
-      company: `0x${result.result.slice(26, 66)}`, // Extract address from response
-      metadataFilecoinCID: `bafybeig${campaignId}`, // Placeholder
-      metadataHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      pricePerSubmission: BigInt(1000000000000000), // 0.001 ETH placeholder
-      totalBudget: BigInt(10000000000000000), // 0.01 ETH placeholder
-      deadline: BigInt(Date.now() / 1000 + 30 * 24 * 60 * 60), // 30 days from now
-      collectionDuration: BigInt(7 * 24 * 60 * 60), // 7 days
-      submissionCount: BigInt(campaignId * 3), // Placeholder
-      active: true,
-      constraintsHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      
-      // UI fields
-      title: `Campaign #${campaignId}`,
-      description: `Data collection campaign ${campaignId}`,
-      companyName: `Company ${campaignId}`,
-      attributes: ['Age Range', 'Region', 'Spend'],
-      status: 'active' as const,
-      budgetUsed: Math.min(campaignId * 10 + 20, 95),
-      priceFormatted: `${formatEther(BigInt(1000000000000000))} ETH`,
-      budgetFormatted: `${formatEther(BigInt(10000000000000000))} ETH`,
-      deadlineDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    };
-
-    return campaign;
-  } catch (error) {
-    console.error(`Failed to fetch campaign ${campaignId}:`, error);
-    return null;
+// Decode campaign data from contract response
+function decodeCampaignData(hexData: string, campaignId: number): Campaign {
+  // Remove 0x prefix
+  const data = hexData.slice(2);
+  
+  // ABI decode the tuple response
+  // Campaign struct: (address company, string metadataFilecoinCID, bytes32 metadataHash, 
+  //                   uint256 pricePerSubmission, uint256 totalBudget, uint256 deadline,
+  //                   uint256 collectionDuration, uint256 submissionCount, bool active, bytes32 constraintsHash)
+  
+  let offset = 0;
+  
+  // Read address (20 bytes, padded to 32)
+  const company = '0x' + data.slice(offset + 24, offset + 64);
+  offset += 64;
+  
+  // Skip to dynamic data offset for string (metadataFilecoinCID)
+  const cidOffset = parseInt(data.slice(offset, offset + 64), 16) * 2;
+  offset += 64;
+  
+  // metadataHash (bytes32)
+  const metadataHash = '0x' + data.slice(offset, offset + 64);
+  offset += 64;
+  
+  // pricePerSubmission (uint256)
+  const pricePerSubmission = BigInt('0x' + data.slice(offset, offset + 64));
+  offset += 64;
+  
+  // totalBudget (uint256)
+  const totalBudget = BigInt('0x' + data.slice(offset, offset + 64));
+  offset += 64;
+  
+  // deadline (uint256)
+  const deadline = BigInt('0x' + data.slice(offset, offset + 64));
+  offset += 64;
+  
+  // collectionDuration (uint256)
+  const collectionDuration = BigInt('0x' + data.slice(offset, offset + 64));
+  offset += 64;
+  
+  // submissionCount (uint256)
+  const submissionCount = BigInt('0x' + data.slice(offset, offset + 64));
+  offset += 64;
+  
+  // active (bool)
+  const active = data.slice(offset + 63, offset + 64) === '1';
+  offset += 64;
+  
+  // constraintsHash (bytes32)
+  const constraintsHash = '0x' + data.slice(offset, offset + 64);
+  
+  // Decode string (metadataFilecoinCID)
+  const cidLength = parseInt(data.slice(cidOffset, cidOffset + 64), 16) * 2;
+  const cidHex = data.slice(cidOffset + 64, cidOffset + 64 + cidLength);
+  const metadataFilecoinCID = hexToString(cidHex);
+  
+  // Calculate derived fields
+  const now = Math.floor(Date.now() / 1000);
+  const deadlineNumber = Number(deadline);
+  const daysUntilDeadline = (deadlineNumber - now) / (24 * 60 * 60);
+  
+  let status: 'active' | 'closing' | 'filled' = 'active';
+  if (!active) {
+    status = 'filled';
+  } else if (daysUntilDeadline < 7) {
+    status = 'closing';
   }
+  
+  // Calculate budget used percentage
+  const budgetUsed = totalBudget > BigInt(0)
+    ? Math.floor((Number(submissionCount) * Number(pricePerSubmission) * 100) / Number(totalBudget))
+    : 0;
+  
+  return {
+    id: campaignId,
+    company,
+    metadataFilecoinCID,
+    metadataHash,
+    pricePerSubmission,
+    totalBudget,
+    deadline,
+    collectionDuration,
+    submissionCount,
+    active,
+    constraintsHash,
+    status,
+    budgetUsed: Math.min(budgetUsed, 100),
+    priceFormatted: formatEther(pricePerSubmission),
+    budgetFormatted: formatEther(totalBudget),
+    deadlineDate: new Date(deadlineNumber * 1000).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    }),
+    title: undefined,
+    description: undefined,
+    attributes: [],
+    companyName: undefined,
+  };
+}
+
+// Convert hex string to UTF-8 string
+function hexToString(hex: string): string {
+  let str = '';
+  for (let i = 0; i < hex.length; i += 2) {
+    const charCode = parseInt(hex.substr(i, 2), 16);
+    if (charCode === 0) break; // Stop at null terminator
+    str += String.fromCharCode(charCode);
+  }
+  return str;
 }
 
 /**
@@ -187,25 +290,48 @@ export function useCampaign(campaignId: number) {
   });
 
   useEffect(() => {
-    async function loadCampaign() {
-      if (!data || isError) {
-        setIsLoading(false);
-        return;
+    if (data && !isError) {
+      // Convert data to Campaign type
+      const campaignData = data as any;
+      
+      const now = Math.floor(Date.now() / 1000);
+      const deadlineNumber = Number(campaignData.deadline);
+      const daysUntilDeadline = (deadlineNumber - now) / (24 * 60 * 60);
+      
+      let status: 'active' | 'closing' | 'filled' = 'active';
+      if (!campaignData.active) {
+        status = 'filled';
+      } else if (daysUntilDeadline < 7) {
+        status = 'closing';
       }
+      
+      const budgetUsed = campaignData.totalBudget > BigInt(0)
+        ? Math.floor((Number(campaignData.submissionCount) * Number(campaignData.pricePerSubmission) * 100) / Number(campaignData.totalBudget))
+        : 0;
 
-      setIsLoading(true);
-      try {
-        const result = await fetchCampaignById(campaignId);
-        setCampaign(result);
-      } catch (error) {
-        console.error('Error loading campaign:', error);
-        setCampaign(null);
-      } finally {
-        setIsLoading(false);
-      }
+      setCampaign({
+        id: campaignId,
+        company: campaignData.company,
+        metadataFilecoinCID: campaignData.metadataFilecoinCID,
+        metadataHash: campaignData.metadataHash,
+        pricePerSubmission: campaignData.pricePerSubmission,
+        totalBudget: campaignData.totalBudget,
+        deadline: campaignData.deadline,
+        collectionDuration: campaignData.collectionDuration,
+        submissionCount: campaignData.submissionCount,
+        active: campaignData.active,
+        constraintsHash: campaignData.constraintsHash,
+        status,
+        budgetUsed: Math.min(budgetUsed, 100),
+        priceFormatted: formatEther(campaignData.pricePerSubmission),
+        budgetFormatted: formatEther(campaignData.totalBudget),
+        deadlineDate: new Date(deadlineNumber * 1000).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
+      });
+      setIsLoading(false);
     }
-
-    loadCampaign();
   }, [data, isError, campaignId]);
 
   return { campaign, isLoading, isError };
