@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-space-grotesk: 'Space Grotesk', sans-serif;
+  --font-ibm-mono: 'IBM Plex Mono', monospace;
+  --red:    #D62828;
+  --yellow: #F7B731;
+  --blue:   #1A3AFF;
+  --black:  #0D0D0D;
+  --white:  #F4F1EC;
+  --gray:   #E0DDD5;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--white);
+  color: var(--black);
+  font-family: var(--font-space-grotesk);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Bauhaus utility classes ── */
+@layer components {
+  .bauhaus-border {
+    @apply border-3 border-bauhaus-black;
+  }
+
+  .bauhaus-card {
+    @apply border-3 border-bauhaus-black bg-bauhaus-white shadow-bauhaus transition-all duration-200;
+  }
+
+  .bauhaus-card:hover {
+    @apply shadow-bauhaus-lg translate-x-[-2px] translate-y-[-2px];
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-bauhaus-black text-bauhaus-white border-3 border-bauhaus-black font-semibold text-sm uppercase tracking-widest shadow-bauhaus transition-all duration-150 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-bauhaus-lg active:translate-x-0 active:translate-y-0 active:shadow-none cursor-pointer;
+  }
+
+  .btn-red {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-bauhaus-red text-bauhaus-white border-3 border-bauhaus-black font-semibold text-sm uppercase tracking-widest shadow-bauhaus transition-all duration-150 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-bauhaus-lg active:translate-x-0 active:translate-y-0 active:shadow-none cursor-pointer;
+  }
+
+  .btn-blue {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-bauhaus-blue text-bauhaus-white border-3 border-bauhaus-black font-semibold text-sm uppercase tracking-widest shadow-bauhaus transition-all duration-150 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-bauhaus-lg active:translate-x-0 active:translate-y-0 active:shadow-none cursor-pointer;
+  }
+
+  .btn-yellow {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-bauhaus-yellow text-bauhaus-black border-3 border-bauhaus-black font-semibold text-sm uppercase tracking-widest shadow-bauhaus transition-all duration-150 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-bauhaus-lg active:translate-x-0 active:translate-y-0 active:shadow-none cursor-pointer;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-transparent text-bauhaus-black border-3 border-bauhaus-black font-semibold text-sm uppercase tracking-widest shadow-bauhaus transition-all duration-150 hover:bg-bauhaus-black hover:text-bauhaus-white hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-bauhaus-lg active:translate-x-0 active:translate-y-0 active:shadow-none cursor-pointer;
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-[0.25em] text-bauhaus-black/50;
+  }
+
+  .bauhaus-input {
+    @apply w-full px-4 py-3 bg-bauhaus-white border-3 border-bauhaus-black font-mono text-sm focus:outline-none focus:ring-0 focus:border-bauhaus-blue shadow-bauhaus transition-all duration-150;
+  }
+
+  .geo-circle {
+    @apply rounded-full border-3 border-bauhaus-black;
+  }
+
+  .geo-square {
+    @apply border-3 border-bauhaus-black;
+  }
+
+  /* Triangle via clip-path */
+  .geo-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--white); }
+::-webkit-scrollbar-thumb { background: var(--black); }
+::-webkit-scrollbar-thumb:hover { background: var(--red); }
+
+/* Selection */
+::selection { background: var(--yellow); color: var(--black); }
